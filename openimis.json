@@ -170,7 +170,15 @@
         },
         {
             "name": "api_etl",
-            "pip": "git+https://github.com/openimis/openimis-be-api_etl_py.git@develop#egg=openimis-be-api_etl"
+            "pip": "git+https://github.com/etsebo-zm-nsr/openimis-be-api_etl_py.git@zm/develop#egg=openimis-be-api_etl"
+        },
+        {
+            "name": "zm_etl_zispis",
+            "pip": "git+https://github.com/etsebo-zm-nsr/openimis-be-zm_etl_zispis_py.git@zm/develop#egg=openimis-be-zm_etl_zispis"
+        },
+        {
+            "name": "zm_etl_kobo",
+            "pip": "git+https://github.com/etsebo-zm-nsr/openimis-be-zm_etl_kobo_py.git@zm/develop#egg=openimis-be-zm_etl_kobo"
         }
     ]
 }
