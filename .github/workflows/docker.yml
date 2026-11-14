@@ -48,11 +48,11 @@ jobs:
       IMAGE_TAG: ${{ vars.IMAGE_TAG }}
       TAG_SHA: ${{ vars.IMAGE_TAG_SHA }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         ref: ${{ env.BUILD_BRANCH }}
     - name: Login to the container registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@v4
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}

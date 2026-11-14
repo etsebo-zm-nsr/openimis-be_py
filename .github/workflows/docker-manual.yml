@@ -25,11 +25,11 @@ jobs:
       IMAGE_NAME: ${{ vars.IMAGE_NAME || 'openimis-be' }}
       RAW_TAG: ${{ inputs.tag }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         ref: ${{ inputs.ref }}
     - name: Login to the container registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@v4
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
