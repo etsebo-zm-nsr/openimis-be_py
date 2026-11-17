@@ -38,6 +38,32 @@ on:
         type: string
         default: 'develop'
 
+      be_repository:
+        description: 'Assembly repository (owner/name) the module is tested in, e.g. a fork'
+        required: false
+        type: string
+        default: 'openimis/openimis-be_py'
+      be_fallback_branch:
+        description: 'Assembly branch used when neither the branch under test nor the PR base exists there'
+        required: false
+        type: string
+        default: 'develop'
+      test_args:
+        description: 'Arguments for manage.py test in the module-only job, e.g. --nomigrations --noinput'
+        required: false
+        type: string
+        default: '--keepdb'
+      test_db_name:
+        description: 'Test database name for the module-only job'
+        required: false
+        type: string
+        default: 'test_imis'
+      run_all_tests:
+        description: 'Also run the tests of every module in the assembly'
+        required: false
+        type: boolean
+        default: true
+
 jobs:
   build_backend:
     name: Build Backend
@@ -52,6 +78,8 @@ jobs:
         env:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BE_REPOSITORY: ${{ inputs.be_repository }}
+          BE_FALLBACK_BRANCH: ${{ inputs.be_fallback_branch }}
         run: |
           # ------------------------------------------------------------------
           # Determine which branch of openimis-be_py we should use: the branch
@@ -64,11 +92,11 @@ jobs:
           else
             # push, workflow_dispatch, ...
             SOURCE_BRANCH="${GITHUB_REF#refs/heads/}"
-            FALLBACK_BRANCH="develop"
+            FALLBACK_BRANCH="$BE_FALLBACK_BRANCH"
           fi
-          FALLBACK_BRANCH="${FALLBACK_BRANCH:-develop}"
+          FALLBACK_BRANCH="${FALLBACK_BRANCH:-$BE_FALLBACK_BRANCH}"
 
-          if [[ -n "$SOURCE_BRANCH" ]] && git ls-remote --exit-code --heads https://github.com/openimis/openimis-be_py.git "refs/heads/$SOURCE_BRANCH" > /dev/null; then
+          if [[ -n "$SOURCE_BRANCH" ]] && git ls-remote --exit-code --heads "https://github.com/$BE_REPOSITORY.git" "refs/heads/$SOURCE_BRANCH" > /dev/null; then
             TARGET_BRANCH="$SOURCE_BRANCH"
             echo "Assembly has branch $SOURCE_BRANCH → using it"
           else
@@ -77,14 +105,14 @@ jobs:
           fi
 
           echo "TARGET_BRANCH=$TARGET_BRANCH" >> $GITHUB_ENV
-          echo "Cloning openimis-be_py from branch: $TARGET_BRANCH"
+          echo "Cloning $BE_REPOSITORY from branch: $TARGET_BRANCH"
 
           # Clone with the determined branch
           rm -rf ./openimis
-          git clone --depth=1 --branch="$TARGET_BRANCH" https://github.com/openimis/openimis-be_py.git ./openimis || {
-            echo "Failed to clone branch '$TARGET_BRANCH' – falling back to 'develop'"
-            git clone --depth=1 --branch=develop https://github.com/openimis/openimis-be_py.git ./openimis
-            echo "Cloned fallback branch: develop"
+          git clone --depth=1 --branch="$TARGET_BRANCH" "https://github.com/$BE_REPOSITORY.git" ./openimis || {
+            echo "Failed to clone branch '$TARGET_BRANCH' – falling back to '$BE_FALLBACK_BRANCH'"
+            git clone --depth=1 --branch="$BE_FALLBACK_BRANCH" "https://github.com/$BE_REPOSITORY.git" ./openimis
+            echo "Cloned fallback branch: $BE_FALLBACK_BRANCH"
           }
 
           # Verify what we actually got
@@ -114,7 +142,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install jq
 
-          export MODULE_NAME="$(echo $GITHUB_REPOSITORY | sed 's#^openimis/openimis-be-\(.*\)_py$#\1#')"
+          export MODULE_NAME="$(echo $GITHUB_REPOSITORY | sed 's#^[^/]*/openimis-be-\(.*\)_py$#\1#')"
           
           echo "MODULE_NAME=$MODULE_NAME" >> $GITHUB_ENV
           
@@ -255,8 +283,9 @@ jobs:
         if: success() || failure()
         run: |
           python -V
-          export MODULE_NAME="$(echo $GITHUB_REPOSITORY | sed 's#^openimis/openimis-be-\(.*\)_py$#\1#')"
-          python manage.py test --keepdb $MODULE_NAME
+          export MODULE_NAME="$(echo $GITHUB_REPOSITORY | sed 's#^[^/]*/openimis-be-\(.*\)_py$#\1#')"
+          # Unquoted on purpose: TEST_ARGS holds several arguments.
+          python manage.py test $TEST_ARGS $MODULE_NAME
         env:
           SECRET_KEY: secret
           MODE: DEV
@@ -267,7 +296,8 @@ jobs:
           DB_HOST: localhost
           DB_PORT: 5432
           DB_NAME: test_imis
-          DB_TEST_NAME: test_imis
+          DB_TEST_NAME: ${{ inputs.test_db_name }}
+          TEST_ARGS: ${{ inputs.test_args }}
           DB_USER: postgres
           DB_PASSWORD: YourStrong!Passw0rd
           #DEV_SERVER: true
@@ -281,6 +311,7 @@ jobs:
     name: Run All Tests (PSQL)
     runs-on: ubuntu-24.04
     needs: build_backend
+    if: inputs.run_all_tests
     services:
       pgsql:
         image: ghcr.io/openimis/openimis-pgsql:ci-18
@@ -437,7 +468,7 @@ jobs:
         if: success() || failure()
         run: |
           # Flake8 Report
-          export MODULE_NAME="$(echo $GITHUB_REPOSITORY | sed 's#^openimis/openimis-be-\(.*\)_py$#\1#')"
+          export MODULE_NAME="$(echo $GITHUB_REPOSITORY | sed 's#^[^/]*/openimis-be-\(.*\)_py$#\1#')"
           MOD_DIR="../current-module/$MODULE_NAME"
           python -m flake8 --output-file=flake8-report.txt $MOD_DIR --exit-zero --ignore W503
           sed -i 's|\.\./current-module/||g' flake8-report.txt
