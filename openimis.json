@@ -132,7 +132,7 @@
         }
 ,{
             "name": "social_protection",
-            "pip": "openimis-be-social_protection==1.6.0"
+            "pip": "openimis-be-social_protection==1.6.1"
         }
 ,{
             "name": "opensearch_reports",
@@ -148,7 +148,7 @@
         }
 ,{
             "name": "calcrule_timesheet",
-            "pip": "openimis-be-calcrule_timesheet==1.0.0"
+            "pip": "openimis-be-calcrule_timesheet==1.0.1"
         }
 ,{
             "name": "payroll",
